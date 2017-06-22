@@ -1,0 +1,47 @@
+version : '2'
+
+services:
+  nginx-web:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    links:
+     - php-web
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./app/web:/app:ro
+    restart: unless-stopped
+
+  php-web:
+    build:
+      context : ./php
+      args :
+        - githubToken=1a41fab810e8b16138ef87eec7dfbdb83c579fbb
+
+    env_file:
+      - varibles.env
+
+    links:
+      - database-backend
+
+    volumes:
+      - ./app:/app:rw
+    extra_hosts:
+     - "mylocal:192.168.100.54"
+
+    restart: unless-stopped
+
+
+  database-backend:
+    image: mysql:5.5
+    volumes:
+      - db_data:/var/lib/mysql:rw
+    env_file:
+      - varibles.env
+
+    restart: unless-stopped
+
+
+volumes :
+  db_data:
+    external: false

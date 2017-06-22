@@ -1,0 +1,6 @@
+version : '2'
+
+services:
+  database-backend:
+    ports:
+      - "3306:3306"
