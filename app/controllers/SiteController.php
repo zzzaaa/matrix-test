@@ -31,7 +31,7 @@ class SiteController extends Controller
      */
     public function actionIndex()
     {
-        return $this->render('/matrix.html');
+        return $this->redirect('/matrix.html');
     }
 
     /**
