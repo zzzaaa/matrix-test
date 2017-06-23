@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Matrix</title>
+
+</head>
+<body>
+
+<table id="tbl">
+
+</table>
+<button onclick="update()">Update!</button>
+<script>
+
+    const elementsArray = [];
+
+    //отрисовка инпутов
+    function rendererMatrix(valObject, maxCol, maxRow)
+    {
+        var tblElement = document.getElementById('tbl');
+
+
+        for (var row = 0; row < maxRow; row++) {
+            var trElement = document.createElement('tr');
+            tblElement.appendChild(trElement);
+
+            for (var col = 0; col < maxCol; col++) {
+
+                var inputElement = document.createElement('input');
+                inputElement.dataset.row = row;
+                inputElement.dataset.col = col;
+                inputElement.setAttribute('maxlength', 6);
+
+                //если значение переданно в массиве, иначе пусто
+
+                var value = valObject.hasOwnProperty(row) && valObject[row].hasOwnProperty(col)
+                    ? valObject[row][col]
+                    : '';
+
+                inputElement.dataset.oldValue = value;
+                inputElement.value = 123;
+
+                var tdElement = document.createElement('td');
+                tdElement.appendChild(inputElement);
+                trElement.appendChild(tdElement);
+                elementsArray.push(inputElement);
+            }
+        }
+
+    }
+
+
+    function update()
+    {
+        //посчитаем что нужно удалить, а что изменилось
+        var updateArray = [];
+        for (var i = 0; i < elementsArray.length; i++) {
+            var element = elementsArray[i];
+            //обновляем только то, что изменилось
+            if (element.dataset.oldValue != element.value) {
+                updateArray.push({col : element.dataset.col, row : element.dataset.row, value : element.value});
+            }
+        }
+
+        if (updateArray.length) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/?r=matrix/update");
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.send(JSON.stringify(updateArray));
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var json = JSON.parse(xhr.responseText);
+                    console.log(json);
+                }
+            };
+        }
+        else {
+            alert('нечего обновлять');
+        }
+        console.log(updateArray);
+    }
+
+
+
+
+
+    var xmlhttp = new XMLHttpRequest();
+
+    xmlhttp.onreadystatechange = function() {
+        if (this.readyState == 4 && this.status == 200) {
+            var matrix = JSON.parse(this.responseText);
+            var matrixObject = {};
+            //конвертируем в объект
+            for (var i = 0; i < matrix.length; i++) {
+                var currentPoint = matrix[i];
+                if (!matrixObject.hasOwnProperty(currentPoint.row)) {
+                    matrixObject[currentPoint.row] = {};
+                }
+                matrixObject[currentPoint.row][currentPoint.col] = currentPoint.value;
+            }
+
+            console.log(matrix);
+            rendererMatrix(matrixObject, 99, 99);
+        }
+    };
+    xmlhttp.open("GET", '/?r=matrix', true);
+    xmlhttp.send();
+
+
+    //rendererMatrix({}, 9, 9);
+
+</script>
+</body>
+</html>
