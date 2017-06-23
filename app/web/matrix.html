@@ -3,22 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <title>Matrix</title>
-
+    <style>
+        input {
+            width: 40px;
+        }
+        .error {
+            border: 1px;
+            border-color: red;
+            border-style: solid;
+        }
+    </style>
 </head>
 <body>
-
-<table id="tbl">
-
-</table>
+<p>Матрица приходит быстро, а вот рендер доллгий</p>
+<button onclick="update()">Update!</button>
+<div id="tbl">
+</div>
 <button onclick="update()">Update!</button>
 <script>
 
+    //храним объектиты инпуты
     const elementsArray = [];
 
     //отрисовка инпутов
     function rendererMatrix(valObject, maxCol, maxRow)
     {
-        var tblElement = document.getElementById('tbl');
+        var tblElement = document.createElement('table');
 
 
         for (var row = 0; row < maxRow; row++) {
@@ -28,6 +38,7 @@
             for (var col = 0; col < maxCol; col++) {
 
                 var inputElement = document.createElement('input');
+                inputElement.type = "number";
                 inputElement.dataset.row = row;
                 inputElement.dataset.col = col;
                 inputElement.setAttribute('maxlength', 6);
@@ -39,7 +50,7 @@
                     : '';
 
                 inputElement.dataset.oldValue = value;
-                inputElement.value = 123;
+                inputElement.value = value;
 
                 var tdElement = document.createElement('td');
                 tdElement.appendChild(inputElement);
@@ -48,6 +59,8 @@
             }
         }
 
+        document.getElementById('tbl').appendChild(tblElement);
+
     }
 
 
@@ -55,11 +68,14 @@
     {
         //посчитаем что нужно удалить, а что изменилось
         var updateArray = [];
+        //ссылки на элементы которые были затронуты
+        var updatedElementsArray = [];
         for (var i = 0; i < elementsArray.length; i++) {
             var element = elementsArray[i];
             //обновляем только то, что изменилось
             if (element.dataset.oldValue != element.value) {
                 updateArray.push({col : element.dataset.col, row : element.dataset.row, value : element.value});
+                updatedElementsArray.push(element);
             }
         }
 
@@ -70,8 +86,36 @@
             xhr.send(JSON.stringify(updateArray));
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4 && xhr.status === 200) {
-                    var json = JSON.parse(xhr.responseText);
-                    console.log(json);
+                    var response = JSON.parse(xhr.responseText);
+
+                    var errorMatrix = {};
+                    //пришли ошибки, если массив не пустой
+                    if (response.length) {
+
+                        response.forEach(function(error){
+                            if (!errorMatrix.hasOwnProperty(error.row)) {
+                                errorMatrix[error.row] = {};
+                            }
+                            errorMatrix[error.row][error.col] = error.error;
+                        });
+                    }
+
+                    updatedElementsArray.forEach(function (element) {
+                        var row = element.dataset.row;
+                        var col = element.dataset.col;
+
+                       //подсветим ошибку
+                       if (errorMatrix && errorMatrix.hasOwnProperty(row) && errorMatrix[row].hasOwnProperty(col))  {
+                           element.className = 'error';
+                       }
+                       else {
+                           element.className = '';
+                           element.dataset.oldValue = element.value;
+                       }
+
+                    });
+
+
                 }
             };
         }
@@ -85,9 +129,11 @@
 
 
 
+    //запросим данные
     var xmlhttp = new XMLHttpRequest();
 
     xmlhttp.onreadystatechange = function() {
+        //удачно
         if (this.readyState == 4 && this.status == 200) {
             var matrix = JSON.parse(this.responseText);
             var matrixObject = {};
@@ -100,15 +146,13 @@
                 matrixObject[currentPoint.row][currentPoint.col] = currentPoint.value;
             }
 
-            console.log(matrix);
-            rendererMatrix(matrixObject, 99, 99);
-        }
+            rendererMatrix(matrixObject, 100, 100);
+        };
     };
     xmlhttp.open("GET", '/?r=matrix', true);
     xmlhttp.send();
 
 
-    //rendererMatrix({}, 9, 9);
 
 </script>
 </body>

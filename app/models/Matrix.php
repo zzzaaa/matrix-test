@@ -19,39 +19,53 @@ class Matrix extends \yii\db\ActiveRecord
      * @inheritdoc
      */
 
-    public static function batchInsertOrUpdate(array $values)
+    public static function updateMatrix(array $matrixCells)
     {
 
-        $sql = 'REPLACE INTO '. self::tableName(). ' (`row`, `col`, `value`) VALUES(:row, :col, :value)';
-        $query = new Query();
-        $command = $query->createCommand()->setSql($sql);
+        //запрос на вствку замену
+        $replaceSql = 'REPLACE INTO '. self::tableName(). ' (`row`, `col`, `value`) VALUES(:row, :col, :value) ';
+        $replaceCommand = (new Query)->createCommand()->setSql($replaceSql);
 
-        foreach ($values as $value) {
-            $command->bindValues($value)->execute();
+        //запрос удаления
+        $deleteCommand = (new Query())->createCommand()->delete(self::tableName(), '(`row`, `col`) = (:row, :col)');
 
-        }
-        return $sql;
-    }
+        //подготовка запросов
+        $replaceCommand->prepare();
+        $deleteCommand->prepare();
 
+        $validateModel = new self();
+        $errors = [];
 
-    public static function massDelete(array $values)
-    {
-        $query = new Query();
-        $command = $query->createCommand()->delete(self::tableName(), '(`row`, `col`) IN (:del)');
-        $deleteKeys = [];
-
-        foreach ($values as $value) {
-            if (isset($value['row'],$value['col'])) {
-                $deleteKeys[] = [$value['row'], $value['col']];
+        foreach ($matrixCells as $cell) {
+            $validateModel->setAttributes($cell);
+            //валидируем прешедшин данные
+            if (!$validateModel->validate()) {
+                $errors[] = array_merge($cell, ['error' => $validateModel->getErrors()]);
+                continue;
             }
+
+            //если есть значение, то обновляем
+            if ($cell['value']) {
+                //передаються только данные тк запрос подготовлеен
+                $replaceCommand->pdoStatement->execute($cell);
+            }
+            else {
+                unset($cell['value']);
+                //передаються только данные тк запрос подготовлеен
+                $deleteCommand->pdoStatement->execute($cell);
+            }
+
         }
 
-        $deleteKeys && $command->bindValue(':del', $deleteKeys);
+        return $errors;
     }
+
 
 
     public static function getMatrixAsArray()
     {
+
+        //Не используем модели тк так быстрее и меньше конвертаций
         $query = new Query();
         return $query->from(self::tableName())->all();
     }
